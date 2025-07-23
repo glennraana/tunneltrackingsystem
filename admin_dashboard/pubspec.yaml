@@ -1,0 +1,62 @@
+name: tunnel_admin_dashboard
+description: Tunnel Tracking System - Admin Dashboard Web App
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.1.0 <4.0.0'
+  flutter: ">=3.13.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Firebase
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.15.3
+  cloud_firestore: ^4.13.6
+  cloud_functions: ^4.6.1
+  
+  # State Management
+  provider: ^6.1.1
+  riverpod: ^2.4.9
+  flutter_riverpod: ^2.4.9
+  
+  # UI & Charts
+  material_symbols_icons: ^4.2762.0
+  fl_chart: ^0.65.0
+  data_table_2: ^2.5.10
+  
+  # HTTP & Networking
+  http: ^1.1.0
+  dio: ^5.4.0
+  
+  # File Handling & Reports
+  pdf: ^3.10.7
+  csv: ^5.0.2
+  file_picker: ^6.1.1
+  universal_html: ^2.2.4
+  
+  # Utils
+  uuid: ^4.2.1
+  intl: ^0.19.0
+  collection: ^1.18.0
+  
+  # Real-time updates
+  web_socket_channel: ^2.4.0
+  
+  # Map & Visualization
+  vector_math: ^2.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_web_compilers: ^4.0.7
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/tunnel_map/ 

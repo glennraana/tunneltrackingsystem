@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users collection - public read/write for authenticated users
+    match /users/{userId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Positions collection - read for authenticated, write for admin/service
+    match /positions/{positionId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        ('admin' in request.auth.token || 
+         'service' in request.auth.token);
+    }
+    
+    // Nodes collection - read for all authenticated, write for admin
+    match /nodes/{nodeId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 'admin' in request.auth.token;
+    }
+    
+    // Unregistered logs - admin/service only
+    match /unregistered_logs/{logId} {
+      allow read, write: if request.auth != null && 
+        ('admin' in request.auth.token || 
+         'service' in request.auth.token);
+    }
+    
+    // Reports collection - admin only
+    match /reports/{reportId} {
+      allow read, write: if request.auth != null && 'admin' in request.auth.token;
+    }
+    
+    // Settings collection - admin only
+    match /settings/{settingId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 'admin' in request.auth.token;
+    }
+  }
+} 
