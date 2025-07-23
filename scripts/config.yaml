@@ -1,0 +1,89 @@
+# Tunnel Tracking System - Configuration
+# Update this file with your actual Rajant node details
+
+# Firebase Configuration (Already deployed and working!)
+firebase:
+  api_url: "https://us-central1-tunnel-tracking-system.cloudfunctions.net/api"
+  timeout: 10
+  retry_attempts: 3
+
+# Rajant Network Configuration
+rajant:
+  # Default credentials (CHANGE THESE!)
+  default_username: "admin"
+  default_password: "admin"
+  api_timeout: 5
+  
+  # Your Rajant nodes (update with actual IP addresses)
+  nodes:
+    - ip: "192.168.100.10"    # CHANGE THIS!
+      name: "Tunnel Entrance"
+      location: 
+        x: 100
+        y: 100
+      zone: "entrance"
+      
+    - ip: "192.168.100.11"    # CHANGE THIS!
+      name: "Section A1"
+      location:
+        x: 300
+        y: 100 
+      zone: "section_a"
+      
+    - ip: "192.168.100.12"    # CHANGE THIS!
+      name: "Tunnel Exit"
+      location:
+        x: 500
+        y: 100
+      zone: "exit"
+
+# Monitoring Settings
+monitoring:
+  scan_interval: 30           # Seconds between scans
+  signal_threshold: -80       # Minimum signal strength (dBm)
+  log_level: "INFO"           # DEBUG, INFO, WARNING, ERROR
+  
+  # Exclude these MAC addresses from monitoring
+  exclude_macs:
+    - "00:00:00:00:00:00"     # Broadcast
+    - "FF:FF:FF:FF:FF:FF"     # Broadcast
+
+# Physical Tunnel Configuration
+tunnel:
+  name: "Main Tunnel Project"
+  
+  # Tunnel dimensions (meters)
+  dimensions:
+    length: 500
+    width: 6
+    height: 4
+  
+  # Safety zones
+  zones:
+    entrance:
+      name: "Tunnel Entrance"
+      danger_level: "medium"
+      max_occupancy: 10
+      
+    section_a:
+      name: "Construction Section A"
+      danger_level: "high"
+      max_occupancy: 5
+      
+    exit:
+      name: "Tunnel Exit"
+      danger_level: "medium"
+      max_occupancy: 10
+
+# Security Settings
+security:
+  enable_mac_blocking: true
+  alert_on_unregistered: true
+  alert_email: "admin@tunnel-project.com"  # CHANGE THIS!
+
+# Logging Configuration
+logging:
+  enable_file_logging: true
+  log_file: "rajant_integration.log"
+  max_log_size: "50MB"
+  backup_count: 5 
