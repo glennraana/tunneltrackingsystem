@@ -121,9 +121,9 @@ def test_firebase_api():
         
         # Test different Firebase endpoints
         endpoints = [
-            ("Health Check", "https://us-central1-tunnel-tracking-system.cloudfunctions.net/api/health"),
-            ("API Root", "https://us-central1-tunnel-tracking-system.cloudfunctions.net/api"),
-            ("Function Root", "https://us-central1-tunnel-tracking-system.cloudfunctions.net")
+            ("Health Check", "https://us-central1-tunnel-tracking-system.cloudfunctions.net/api/api/health"),
+            ("API Root", "https://us-central1-tunnel-tracking-system.cloudfunctions.net/api/api"),
+            ("Function Root", "https://us-central1-tunnel-tracking-system.cloudfunctions.net/api")
         ]
         
         for name, url in endpoints:

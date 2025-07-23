@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "tunnel-tracking-system"
-  }
-} 
+  },
+  "targets": {
+    "tunnel-tracking-system": {
+      "hosting": {
+        "admin": [
+          "tunnel-tracking-system"
+        ],
+        "worker": [
+          "worker-app-83aee"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

@@ -3,7 +3,7 @@
 
 # Firebase Configuration (Already deployed and working!)
 firebase:
-  api_url: "https://us-central1-tunnel-tracking-system.cloudfunctions.net/api"
+  api_url: "https://us-central1-tunnel-tracking-system.cloudfunctions.net/api/api"
   timeout: 10
   retry_attempts: 3
 

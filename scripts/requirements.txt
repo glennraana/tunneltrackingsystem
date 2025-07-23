@@ -6,4 +6,4 @@ paramiko>=3.0.0
 netaddr>=0.8.0
 scapy>=2.4.5
 psutil>=5.9.0
-rajant-api>=1.0.0 
+rajant-api>=0.1.1 
