@@ -423,7 +423,7 @@ class RajantMacMonitor:
     def _get_mock_devices(self, node: Dict) -> List[Dict]:
         """Fallback mock data for testing when Rajant API is not available."""
         
-        if node['node_id'] == 'rajant_10':  # Entrance node
+        if node['node_id'] == 'rajant_1':  # kjøkken node
             return [
                 # Mobile devices (should be detected)
                 {
@@ -452,7 +452,7 @@ class RajantMacMonitor:
                     'device_type': 'infrastructure'
                 }
             ]
-        elif node['node_id'] == 'rajant_11':  # Section A node
+        elif node['node_id'] == 'rajant_2':  # Gang node
             return [
                 {
                     'mac_address': '5C:51:4F:66:77:88',  # Google Pixel
@@ -472,15 +472,6 @@ class RajantMacMonitor:
                     'signal_strength': -25,
                     'association_time': datetime.now().isoformat(),
                     'device_type': 'infrastructure'
-                }
-            ]
-        elif node['node_id'] == 'rajant_12':  # Exit node
-            return [
-                {
-                    'mac_address': '0C:96:BF:AA:BB:CC',  # Huawei Android
-                    'signal_strength': -42,
-                    'association_time': datetime.now().isoformat(),
-                    'device_type': 'mobile'
                 }
             ]
         
