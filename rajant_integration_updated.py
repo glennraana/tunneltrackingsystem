@@ -25,7 +25,7 @@ import time
 import socket
 import subprocess
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import asyncio
 import argparse
@@ -111,7 +111,8 @@ class FirebaseUserChecker:
         """Get all registered users from Firebase."""
         try:
             # Check if cache is still valid
-            if datetime.now() < self.cache_expiry and self.registered_users_cache:
+            current_time = datetime.now()
+            if hasattr(self, 'cache_expiry') and current_time < self.cache_expiry and self.registered_users_cache:
                 return self.registered_users_cache
             
             # Fetch from Firebase API
@@ -134,7 +135,7 @@ class FirebaseUserChecker:
                 
                 # Update cache
                 self.registered_users_cache = user_lookup
-                self.cache_expiry = datetime.now().timestamp() + self.cache_duration
+                self.cache_expiry = current_time + timedelta(seconds=self.cache_duration)
                 
                 logger.info(f"📋 Loaded {len(user_lookup)} registered users from Firebase")
                 return user_lookup
@@ -482,7 +483,10 @@ class RajantMacMonitor:
         # Include the TROLLTEST MAC address in mock data
         mock_devices = []
         
-        if node['node_id'] == 'rajant_10':  # Entrance node
+        # Use node name from config instead of hardcoded names
+        node_name = node.get('name', 'Unknown Node')
+        
+        if 'kjøkken' in node_name.lower() or 'entrance' in node_name.lower():
             mock_devices.extend([
                 # Mobile devices (should be detected)
                 {
@@ -512,7 +516,7 @@ class RajantMacMonitor:
                     'device_type': 'infrastructure'
                 }
             ])
-        elif node['node_id'] == 'rajant_11':  # Section A node
+        elif 'gang' in node_name.lower() or 'section' in node_name.lower():
             mock_devices.extend([
                 {
                     'mac_address': '5C:51:4F:66:77:88',  # Google Pixel
@@ -725,15 +729,18 @@ async def main():
     # Start monitoring if requested
     if not args.discover_only:
         if not args.monitor_only:
-            # Get nodes from discovery
-            nodes = await node_discovery.discover_nodes()
-        else:
-            # Load nodes from configuration or API
-            nodes = [
-                {'node_id': 'rajant_10', 'name': 'Entrance Node', 'ip_address': '192.168.100.10'},
-                {'node_id': 'rajant_11', 'name': 'Section A Node', 'ip_address': '192.168.100.11'},
-                {'node_id': 'rajant_12', 'name': 'Exit Node', 'ip_address': '192.168.100.12'},
-            ]
+            # Load nodes from configuration
+            rajant_nodes = CONFIG.get('rajant', {}).get('nodes', [])
+            nodes = []
+            for node_config in rajant_nodes:
+                ip = node_config.get('ip')
+                name = node_config.get('name', f'Node {ip}')
+                if ip:
+                    nodes.append({
+                        'node_id': f'rajant_{ip.split(".")[-1]}',
+                        'name': name,
+                        'ip_address': ip
+                    })
         
         await mac_monitor.start_monitoring(nodes)
 
