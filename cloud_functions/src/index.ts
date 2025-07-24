@@ -124,11 +124,21 @@ app.get('/api/tunnel-status', async (req: Request, res: Response) => {
       .filter(pos => userMap.has(pos.mac_address))
       .map(pos => {
         const user = userMap.get(pos.mac_address);
+        // Map node IDs to readable names
+        const nodeNameMap: { [key: string]: string } = {
+          'rajant_1': 'kjøkken',
+          'rajant_2': 'Gang',
+          'entrance_01': 'Hovedinngang',
+          'section_a1': 'Seksjon A1',
+          'exit_01': 'Utgang Nord'
+        };
+        const readableLocation = nodeNameMap[pos.node_id] || pos.node_id;
+        
         return {
           id: user.id,
           name: user.name,
           mac_address: pos.mac_address,
-          current_location: pos.node_id,
+          current_location: readableLocation,
           last_seen: pos.timestamp,
           signal_strength: pos.signal_strength
         };
@@ -162,9 +172,19 @@ app.get('/api/tunnel-status', async (req: Request, res: Response) => {
       const macAddress = data.mac_address;
       
       if (!unauthorizedDevices.has(macAddress)) {
+        // Map node IDs to readable names
+        const nodeNameMap: { [key: string]: string } = {
+          'rajant_1': 'kjøkken',
+          'rajant_2': 'Gang',
+          'entrance_01': 'Hovedinngang',
+          'section_a1': 'Seksjon A1',
+          'exit_01': 'Utgang Nord'
+        };
+        const readableNodeName = nodeNameMap[data.node_id] || data.node_id;
+        
         unauthorizedDevices.set(macAddress, {
           mac_address: macAddress,
-          node_name: data.node_id,
+          node_name: readableNodeName,
           detected_at: data.timestamp,
           signal_strength: data.signal_strength
         });
