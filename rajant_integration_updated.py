@@ -719,6 +719,9 @@ async def main():
     node_discovery = RajantNodeDiscovery()
     mac_monitor = RajantMacMonitor()
     
+    # Initialize nodes list
+    nodes = []
+    
     # Discover and register nodes
     if not args.monitor_only:
         nodes = await node_discovery.discover_nodes()
@@ -729,7 +732,10 @@ async def main():
     # Start monitoring if requested
     if not args.discover_only:
         if not args.monitor_only:
-            # Load nodes from configuration
+            # Use nodes from discovery
+            pass
+        else:
+            # Load nodes from configuration for monitor-only mode
             rajant_nodes = CONFIG.get('rajant', {}).get('nodes', [])
             nodes = []
             for node_config in rajant_nodes:
