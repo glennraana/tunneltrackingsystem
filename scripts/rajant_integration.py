@@ -173,6 +173,11 @@ class RajantNodeDiscovery:
     async def _get_node_info(self, ip: str) -> Optional[Dict]:
         """Get detailed information from Rajant node using rajant-api."""
         try:
+            # Get node name from config.yaml
+            config_nodes = CONFIG.get('rajant', {}).get('nodes', [])
+            node_config = next((node for node in config_nodes if node.get('ip') == ip), None)
+            config_name = node_config.get('name', f'Rajant Node {ip.split(".")[-1]}') if node_config else f'Rajant Node {ip.split(".")[-1]}'
+            
             if RAJANT_API_AVAILABLE:
                 # Use Rajant API to get actual node information
                 rajant = RajantAPI(
@@ -189,7 +194,7 @@ class RajantNodeDiscovery:
                 node_info = {
                     'ip_address': ip,
                     'node_id': f'rajant_{ip.split(".")[-1]}',
-                    'name': node_status.get('hostname', f'Rajant Node {ip.split(".")[-1]}'),
+                    'name': node_status.get('hostname', config_name),  # Use config name as fallback
                     'model': node_status.get('model', 'Unknown'),
                     'firmware_version': node_status.get('firmware_version', 'Unknown'),
                     'location': self._determine_location(ip),
@@ -203,11 +208,11 @@ class RajantNodeDiscovery:
                 logger.info(f"📡 Found Rajant node: {node_info['name']} ({ip}) - Model: {node_info['model']}")
                 return node_info
             else:
-                # Fallback to simulated data
+                # Fallback to simulated data with config name
                 node_info = {
                     'ip_address': ip,
                     'node_id': f'rajant_{ip.split(".")[-1]}',
-                    'name': f'Rajant Node {ip.split(".")[-1]}',
+                    'name': config_name,  # Use name from config.yaml
                     'model': 'Unknown',  # Cannot determine without API
                     'firmware_version': 'Unknown',
                     'location': self._determine_location(ip),
