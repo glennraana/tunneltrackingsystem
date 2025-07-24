@@ -145,14 +145,29 @@ class RajantNodeDiscovery:
     async def _ping_node(self, ip: str) -> bool:
         """Check if node is reachable."""
         try:
-            # Simple ping check
-            result = subprocess.run(
-                ['ping', '-c', '1', '-W', '2', ip],
-                capture_output=True,
-                timeout=5
+            # Use asyncio.subprocess for better async support
+            process = await asyncio.create_subprocess_exec(
+                'ping', '-c', '1', '-W', '2', ip,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
             )
-            return result.returncode == 0
-        except:
+            
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=10.0)
+            
+            if process.returncode == 0:
+                logger.info(f"✅ Ping successful to {ip}")
+                return True
+            else:
+                logger.warning(f"❌ Ping failed to {ip} (return code: {process.returncode})")
+                if stderr:
+                    logger.debug(f"Ping stderr: {stderr.decode()}")
+                return False
+                
+        except asyncio.TimeoutError:
+            logger.warning(f"⏰ Ping timeout to {ip}")
+            return False
+        except Exception as e:
+            logger.error(f"❌ Ping error to {ip}: {e}")
             return False
     
     async def _get_node_info(self, ip: str) -> Optional[Dict]:
@@ -524,12 +539,48 @@ class RajantMacMonitor:
             logger.error(f"❌ Error sending position update: {e}")
             return False
 
+async def test_configuration():
+    """Test configuration and ping nodes."""
+    logger.info("🧪 Testing configuration...")
+    
+    # Test config loading
+    logger.info(f"📋 Loaded config: {CONFIG}")
+    
+    # Test node discovery
+    discovery = RajantNodeDiscovery()
+    nodes = await discovery.discover_nodes()
+    
+    if nodes:
+        logger.info(f"✅ Found {len(nodes)} nodes in configuration")
+        for node in nodes:
+            logger.info(f"  - {node['name']} ({node['ip_address']})")
+    else:
+        logger.error("❌ No nodes found in configuration")
+    
+    # Test ping to each configured node
+    rajant_nodes = CONFIG.get('rajant', {}).get('nodes', [])
+    logger.info(f"🔍 Testing ping to {len(rajant_nodes)} configured nodes...")
+    
+    for node in rajant_nodes:
+        ip = node.get('ip')
+        name = node.get('name', 'Unknown')
+        if ip:
+            is_reachable = await discovery._ping_node(ip)
+            status = "✅ REACHABLE" if is_reachable else "❌ NOT REACHABLE"
+            logger.info(f"  {status}: {name} ({ip})")
+
 async def main():
     """Main integration function."""
     parser = argparse.ArgumentParser(description='Rajant Integration for Tunnel Tracking')
     parser.add_argument('--discover-only', action='store_true', help='Only discover and register nodes')
     parser.add_argument('--monitor-only', action='store_true', help='Only monitor MAC addresses')
+    parser.add_argument('--test-config', action='store_true', help='Test configuration and ping nodes')
     args = parser.parse_args()
+    
+    # Test configuration if requested
+    if args.test_config:
+        await test_configuration()
+        return
     
     logger.info("🚀 Starting Rajant Integration...")
     
