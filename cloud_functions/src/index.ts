@@ -87,12 +87,52 @@ app.get('/api/tunnel-status', async (req: Request, res: Response) => {
     // Get active users (users seen in last 5 minutes)
     const recentPositions = await db.collection('positions')
       .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(fiveMinutesAgo))
+      .orderBy('timestamp', 'desc')
       .get();
 
-    const activeUsers = new Set();
+    // Group positions by MAC address to get latest position for each user
+    const latestPositions = new Map();
     recentPositions.forEach(doc => {
-      activeUsers.add(doc.data().mac_address);
+      const data = doc.data();
+      const macAddress = data.mac_address;
+      
+      if (!latestPositions.has(macAddress)) {
+        latestPositions.set(macAddress, {
+          mac_address: macAddress,
+          node_id: data.node_id,
+          timestamp: data.timestamp,
+          signal_strength: data.signal_strength
+        });
+      }
     });
+
+    // Get user details for registered MAC addresses
+    const users = await db.collection('users').get();
+    const userMap = new Map();
+    users.forEach(doc => {
+      const userData = doc.data();
+      userMap.set(userData.mac_address, {
+        id: doc.id,
+        name: userData.name,
+        mac_address: userData.mac_address,
+        registered_at: userData.registered_at
+      });
+    });
+
+    // Create active users list with details
+    const activeUsers = Array.from(latestPositions.values())
+      .filter(pos => userMap.has(pos.mac_address))
+      .map(pos => {
+        const user = userMap.get(pos.mac_address);
+        return {
+          id: user.id,
+          name: user.name,
+          mac_address: pos.mac_address,
+          current_location: pos.node_id,
+          last_seen: pos.timestamp,
+          signal_strength: pos.signal_strength
+        };
+      });
 
     // Get total registered users today
     const todayStart = new Date();
@@ -107,16 +147,38 @@ app.get('/api/tunnel-status', async (req: Request, res: Response) => {
       .where('active_status', '==', true)
       .get();
 
-    // Get recent unregistered attempts
+    const totalNodes = await db.collection('nodes').get();
+
+    // Get recent unregistered attempts with details
     const recentUnregistered = await db.collection('unregistered_logs')
       .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(fiveMinutesAgo))
+      .orderBy('timestamp', 'desc')
       .get();
 
+    // Group unauthorized devices by MAC to avoid duplicates
+    const unauthorizedDevices = new Map();
+    recentUnregistered.forEach(doc => {
+      const data = doc.data();
+      const macAddress = data.mac_address;
+      
+      if (!unauthorizedDevices.has(macAddress)) {
+        unauthorizedDevices.set(macAddress, {
+          mac_address: macAddress,
+          node_name: data.node_id,
+          detected_at: data.timestamp,
+          signal_strength: data.signal_strength
+        });
+      }
+    });
+
     res.status(200).json({
-      active_users_count: activeUsers.size,
+      active_users_count: activeUsers.length,
+      active_users: Array.from(activeUsers.values()),
       active_nodes_count: activeNodes.size,
+      total_nodes_count: totalNodes.size,
       registered_today_count: todayRegistrations.size,
-      unregistered_attempts: recentUnregistered.size,
+      unregistered_attempts: unauthorizedDevices.size,
+      unauthorized_devices: Array.from(unauthorizedDevices.values()),
       last_updated: admin.firestore.FieldValue.serverTimestamp()
     });
   } catch (error) {
