@@ -29,15 +29,43 @@ import asyncio
 import argparse
 
 # Configuration
-CONFIG = {
-    'firebase_api_url': 'https://us-central1-tunnel-tracking-system.cloudfunctions.net/api/api',
-    'rajant_network': '192.168.100.0/24',  # Adjust to your Rajant network
-    'rajant_username': 'admin',  # Default Rajant username
-    'rajant_password': 'admin',  # Default Rajant password - CHANGE THIS!
-    'scan_interval': 30,  # seconds
-    'node_discovery_timeout': 5,  # seconds
-    'debug': True
-}
+import yaml
+import os
+
+def load_config():
+    """Load configuration from config.yaml"""
+    config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
+    try:
+        with open(config_path, 'r') as file:
+            config = yaml.safe_load(file)
+        return config
+    except Exception as e:
+        logger.error(f"❌ Failed to load config.yaml: {e}")
+        # Fallback configuration
+        return {
+            'firebase': {
+                'api_url': 'https://us-central1-tunnel-tracking-system.cloudfunctions.net/api/api',
+                'timeout': 10,
+                'retry_attempts': 3
+            },
+            'rajant': {
+                'default_username': 'admin',
+                'default_password': 'admin',
+                'api_timeout': 5,
+                'nodes': [
+                    {'ip': '192.168.100.10', 'name': 'Tunnel Entrance'},
+                    {'ip': '192.168.100.11', 'name': 'Section A1'},
+                    {'ip': '192.168.100.12', 'name': 'Tunnel Exit'}
+                ]
+            },
+            'monitoring': {
+                'scan_interval': 30,
+                'signal_threshold': -80,
+                'log_level': 'INFO'
+            }
+        }
+
+CONFIG = load_config()
 
 # Setup logging
 logging.basicConfig(
@@ -93,18 +121,24 @@ class RajantNodeDiscovery:
         return nodes
     
     async def _scan_network(self) -> List[str]:
-        """Scan network for potential Rajant nodes."""
-        # This is a simplified scan - in practice you'd use proper network discovery
-        potential_ips = [
-            '192.168.100.10',  # Replace with actual Rajant node IPs
-            '192.168.100.11',
-            '192.168.100.12',
-        ]
+        """Scan network for potential Rajant nodes using config.yaml."""
+        # Get node IPs from configuration
+        rajant_nodes = CONFIG.get('rajant', {}).get('nodes', [])
+        potential_ips = [node.get('ip') for node in rajant_nodes if node.get('ip')]
+        
+        if not potential_ips:
+            logger.warning("⚠️ No Rajant node IPs found in config.yaml")
+            return []
+        
+        logger.info(f"🔍 Scanning {len(potential_ips)} configured Rajant nodes...")
         
         active_nodes = []
         for ip in potential_ips:
             if await self._ping_node(ip):
                 active_nodes.append(ip)
+                logger.info(f"✅ Node {ip} is reachable")
+            else:
+                logger.warning(f"❌ Node {ip} is not reachable")
         
         return active_nodes
     
@@ -128,8 +162,8 @@ class RajantNodeDiscovery:
                 # Use Rajant API to get actual node information
                 rajant = RajantAPI(
                     host=ip,
-                    username=CONFIG.get('rajant_username', 'admin'),
-                    password=CONFIG.get('rajant_password', 'admin')
+                    username=CONFIG.get('rajant', {}).get('default_username', 'admin'),
+                    password=CONFIG.get('rajant', {}).get('default_password', 'admin')
                 )
                 
                 await rajant.connect()
@@ -211,7 +245,7 @@ class RajantNodeDiscovery:
             
             # Register with our API
             response = requests.post(
-                f"{CONFIG['firebase_api_url']}/admin/nodes",
+                f"{CONFIG.get('firebase', {}).get('api_url')}/admin/nodes",
                 headers=self.api_headers,
                 json=payload,
                 timeout=10
@@ -261,7 +295,7 @@ class RajantMacMonitor:
                     stats = self.mobile_detector.get_device_stats()
                     logger.info(f"📊 Filtering Stats - Total: {stats['total_devices_seen']}, Mobile: {stats['mobile_devices']}, Filtered: {stats['infrastructure_devices']}, Efficiency: {stats['filter_efficiency']:.1%}")
                 
-                await asyncio.sleep(CONFIG['scan_interval'])
+                await asyncio.sleep(CONFIG.get('monitoring', {}).get('scan_interval', 30))
                 
             except KeyboardInterrupt:
                 logger.info("🛑 Monitoring stopped by user")
@@ -474,7 +508,7 @@ class RajantMacMonitor:
         """Send position update to Firebase Cloud Functions."""
         try:
             response = requests.post(
-                f"{CONFIG['firebase_api_url']}/log-position",
+                f"{CONFIG.get('firebase', {}).get('api_url')}/log-position",
                 headers=self.api_headers,
                 json=position_data,
                 timeout=10
