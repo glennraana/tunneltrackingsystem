@@ -443,7 +443,7 @@ app.post('/api/log-unauthorized', async (req: Request, res: Response): Promise<v
     const unauthorizedData = {
       mac_address,
       node_id,
-      timestamp: timestamp || new Date().toISOString(),
+      timestamp: admin.firestore.Timestamp.fromDate(new Date(timestamp || new Date().toISOString())),
       signal_strength: signal_strength || -50,
       metadata: metadata || {},
       created_at: admin.firestore.FieldValue.serverTimestamp()
