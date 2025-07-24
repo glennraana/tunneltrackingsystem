@@ -230,6 +230,155 @@ app.get('/api/nodes', async (req: Request, res: Response) => {
   }
 });
 
+// Get all users
+app.get('/api/users', async (req: Request, res: Response) => {
+  try {
+    const users = await db.collection('users').get();
+    const userList: any[] = [];
+
+    users.forEach(doc => {
+      userList.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+
+    res.status(200).json({
+      users: userList,
+      count: userList.length
+    });
+  } catch (error) {
+    console.error('Error getting users:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create or update user
+app.post('/api/users', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, mac_address, location_description } = req.body;
+
+    if (!name || !mac_address) {
+      res.status(400).json({
+        error: 'Missing required fields: name, mac_address'
+      });
+      return;
+    }
+
+    const userData = {
+      name,
+      mac_address,
+      location_description: location_description || '',
+      registered_at: admin.firestore.FieldValue.serverTimestamp(),
+      updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      active_status: true
+    };
+
+    // Check if user with this MAC already exists
+    const existingUser = await db.collection('users')
+      .where('mac_address', '==', mac_address)
+      .limit(1)
+      .get();
+
+    if (!existingUser.empty) {
+      // Update existing user
+      const docId = existingUser.docs[0].id;
+      await db.collection('users').doc(docId).update({
+        ...userData,
+        updated_at: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      res.status(200).json({
+        success: true,
+        message: 'User updated successfully',
+        user_id: docId
+      });
+    } else {
+      // Create new user
+      const docRef = await db.collection('users').add(userData);
+      
+      res.status(201).json({
+        success: true,
+        message: 'User created successfully',
+        user_id: docRef.id
+      });
+    }
+  } catch (error) {
+    console.error('Error creating/updating user:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get unauthorized devices (recent unregistered attempts)
+app.get('/api/unauthorized-devices', async (req: Request, res: Response) => {
+  try {
+    const fiveMinutesAgo = new Date();
+    fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5);
+
+    const unauthorizedLogs = await db.collection('unregistered_logs')
+      .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(fiveMinutesAgo))
+      .orderBy('timestamp', 'desc')
+      .get();
+
+    const deviceList: any[] = [];
+    const seenMacs = new Set();
+
+    unauthorizedLogs.forEach(doc => {
+      const data = doc.data();
+      if (!seenMacs.has(data.mac_address)) {
+        seenMacs.add(data.mac_address);
+        deviceList.push({
+          mac_address: data.mac_address,
+          node_id: data.node_id,
+          detected_at: data.timestamp,
+          signal_strength: data.signal_strength
+        });
+      }
+    });
+
+    res.status(200).json({
+      unauthorized_devices: deviceList,
+      count: deviceList.length
+    });
+  } catch (error) {
+    console.error('Error getting unauthorized devices:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Log unauthorized access
+app.post('/api/log-unauthorized', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { mac_address, node_id, timestamp, signal_strength, metadata } = req.body;
+
+    if (!mac_address || !node_id) {
+      res.status(400).json({
+        error: 'Missing required fields: mac_address, node_id'
+      });
+      return;
+    }
+
+    const unauthorizedData = {
+      mac_address,
+      node_id,
+      timestamp: timestamp || new Date().toISOString(),
+      signal_strength: signal_strength || -50,
+      metadata: metadata || {},
+      created_at: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    await db.collection('unregistered_logs').add(unauthorizedData);
+
+    res.status(200).json({
+      success: true,
+      message: 'Unauthorized access logged successfully'
+    });
+  } catch (error) {
+    console.error('Error logging unauthorized access:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({
